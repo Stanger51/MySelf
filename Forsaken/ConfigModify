@@ -1,0 +1,91 @@
+local NoliCon = require(game:GetService("ReplicatedStorage").Assets.Killers.Noli.Config)
+NoliCon.VoidRushInitialTurnMult = 5.5
+NoliCon.VoidRushTurnSpeed = 1.35
+NoliCon.SprintSpeed = 27.8
+NoliCon.Speed = 8.4
+NoliCon.MaxStamina = 110
+NoliCon.StaminaLoss = 9.5
+NoliCon.StaminaGain = 23
+NoliCon.VoidRushDashSpeed = 70
+
+local JasonCon = require(game:GetService("ReplicatedStorage").Assets.Killers.Slasher.Config)
+JasonCon.StaminaLoss = 9.2
+JasonCon.StaminaGain = 22
+JasonCon.MaxStamina = 108
+JasonCon.SprintSpeed = 28.3
+JasonCon.Speed = 9.5
+JasonCon.MinStamina = -1
+JasonCon.EnragedSpeed = 20
+JasonCon.EnragedStaminaCap = 80
+
+local JohnCon = require(game:GetService("ReplicatedStorage").Assets.Killers.JohnDoe.Config)
+JohnCon.StaminaLoss = 9.2
+JohnCon.MaxStamina = 110
+JohnCon.Speed = 9.25
+JohnCon.SprintSpeed = 27.4
+
+local OneCon = require(game:GetService("ReplicatedStorage").Assets.Killers["1x1x1x1"].Config)
+OneCon.StaminaLoss = 9.3
+OneCon.MaxStamina = 115
+OneCon.StaminaGain = 21.25
+OneCon.SprintSpeed = 27.2
+OneCon.Speed = 8.2
+OneCon.MinStamina = -1
+
+local CoolCon = require(game:GetService("ReplicatedStorage").Assets.Killers.c00lkidd.Config)
+CoolCon.Speed = 8.1
+CoolCon.SprintSpeed = 28.1
+CoolCon.StaminaLoss = 9.25
+CoolCon.MaxStamina = 102
+
+local GuestCon = require(game:GetService("ReplicatedStorage").Assets.Survivors.Guest1337.Config)
+GuestCon.BlockSPeedDuration = 1.5
+GuestCon.Speed = 12.25
+GuestCon.PunchDashForce = 55
+GuestCon.ParryDashForce = 90
+GuestCon.ChargingSpeed = 38
+GuestCon.ChargingTurnSpeed = 3
+GuestCon.ChargingPunishmentDistanceInterval = 20
+GuestCon.ChargePunishmentSlownessMaxDuration = 12
+
+local VeeCon = require(game:GetService("ReplicatedStorage").Assets.Survivors.Veeronica.Config)
+VeeCon["Sk8StaminaLoss"] = 0.75
+VeeCon["Sk8StaminaLossOutNerfed"] = 1
+VeeCon["Sk8StaminaLossOut"] = 1
+VeeCon["Sk8TrickStamina"] = 12
+VeeCon["Sk8TurnControl"] = 0.8
+VeeCon["VandalismRange"] = 35
+VeeCon["VandalismWidth"] = 13
+VeeCon["Sk8TrickStaminaNerfed"] = 8.5
+
+local DusekCon = require(game:GetService("ReplicatedStorage").Assets.Survivors.Dusekkar.Config)
+DusekCon.SpawnProtectionTimeUntilBrokenByWallInterference = 4
+DusekCon.SpawnProtectionScaleRadius = 0.6
+DusekCon.PlasmaBeamSpeedReductionWhileInUse = 21.5
+DusekCon.StaminaLoss = 9.25
+
+local ElliotCon = require(game:GetService("ReplicatedStorage").Assets.Survivors.Elliot.Config)
+ElliotCon.StaminaDrain = 9
+ElliotCon.MinStamina = -1
+
+local TwoCon = require(game:GetService("ReplicatedStorage").Assets.Survivors.TwoTime.Config)
+TwoCon.Speed = 12.25
+TwoCon.SprintSpeed = 26.25
+TwoCon.StaminaLoss = 9.8
+TwoCon.MinStamina = -1
+TwoCon["CrouchRunSpeed"] = 15.5
+TwoCon["CrouchSpeed"] = 9.5
+
+local ChanceCon = require(game:GetService("ReplicatedStorage").Assets.Survivors.Chance.Config)
+ChanceCon.Speed = 12.25
+ChanceCon.SprintSpeed = 26.25
+ChanceCon.StaminaLoss = 9.8
+ChanceCon.MinStamina = -1
+
+local HackerCon = require(game:GetService("ReplicatedStorage").Assets.Survivors["007n7"].Config)
+HackerCon.Speed = 12.25
+HackerCon.SprintSpeed = 26.25
+HackerCon.StaminaLoss = 9.8
+HackerCon.MinStamina = -1
+
+
