@@ -1,0 +1,267 @@
+function GetAltKeybind(what)
+    local player = game.Players.LocalPlayer
+    local keybinds = player:FindFirstChild("PlayerData") and player.PlayerData:FindFirstChild("Settings")
+        and player.PlayerData.Settings:FindFirstChild("Keybinds") and player.PlayerData.Settings.Keybinds
+    
+    if not keybinds then return nil end
+
+    local y = keybinds["AltAbility" .. what]
+    if y then
+        return y.Value
+    end
+    return nil
+end
+local LocalPlayer = game.Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local Players = game.Players
+local UserInputService = game:GetService("UserInputService")
+local ChanceAimbotEnabled, ChanceAimbotPrediction, ChanceAimbotSmoothenss, Character, HumanoidRootPart, Humanoid, VelocityData, MaxVelocitySamples, Aimbotconfig = true, 1, 0.3, LocalPlayer.Character, LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart"), LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid"), {}, 10, {Enabled=false, Smoothness=0.3, PredictionMultiplier=1, MinDistance=0, MaxDistance=9999, TargetParts={"QueryHitbox", "HumanoidRootPart", "Torso", "UpperTorso"}, TeamCheck=false, HorizontalOnly=true, VelocityTracking=true}
+
+LocalPlayer.CharacterAdded:Connect(function(NewCharacter)
+    Character = NewCharacter
+    HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+    Humanoid = Character:WaitForChild("Humanoid")
+end)
+
+function IsAlive(entity)
+    if entity:IsA("Model") then
+        local humanoid = entity:FindFirstChildOfClass("Humanoid")
+        return humanoid and humanoid.Health > 0
+    end
+    return false
+end
+
+function GetTargetPart(target)
+    for _, partName in ipairs(Aimbotconfig.TargetParts) do
+        local part = target:FindFirstChild(partName)
+        if part and part:IsA("BasePart") then
+            return part
+        end
+    end
+    return nil
+end
+
+local Chanceaimbotfolder = "Killers"
+
+function GetClosestTargetttt()
+    if not HumanoidRootPart then 
+        return nil, nil 
+    end
+    
+    local targetFolder = workspace.Players:FindFirstChild(Chanceaimbotfolder)
+    if not targetFolder then 
+        return nil, nil 
+    end
+    
+    function FindTarget(ignoreMinDistance)
+        local closestDistance = math.huge
+        local closestTarget = nil
+        local closestPart = nil
+        local playerCharacter = Character
+        
+        if not playerCharacter or not playerCharacter:FindFirstChild("HumanoidRootPart") then 
+            return nil, nil 
+        end
+        
+        local playerPosition = playerCharacter.HumanoidRootPart.Position
+
+        for _, survivor in pairs(targetFolder:GetChildren()) do
+            local isAlive = IsAlive(survivor)
+            local isSelf = (survivor == playerCharacter)
+            if isAlive and not isSelf then
+                local targetPart = GetTargetPart(survivor)
+                if targetPart then
+                    local distance = (playerPosition - targetPart.Position).Magnitude
+                    local minCheck = ignoreMinDistance or distance >= Aimbotconfig.MinDistance
+                    if distance < closestDistance and distance <= Aimbotconfig.MaxDistance and minCheck then
+                        closestDistance = distance
+                        closestTarget = survivor
+                        closestPart = targetPart
+                    end
+                end
+            end
+        end
+
+        return closestTarget, closestPart
+    end
+    local target, part = FindTarget(false)
+    if not target then
+        target, part = FindTarget(true)
+    end
+    return target, part
+end
+function PredictPosition(part)
+    if not part or not part:IsA("BasePart") or not HumanoidRootPart then 
+        return part and part.Position or Vector3.new(0,0,0) 
+    end
+    local targetVelocity = part.Velocity
+    local targetPosition = part.Position
+
+    local distance = (HumanoidRootPart.Position - targetPosition).Magnitude
+    local bulletSpeed = 9999
+    local timeToHit = distance / bulletSpeed
+    local predictedPosition = targetPosition + (targetVelocity * timeToHit * Aimbotconfig.PredictionMultiplier)
+    return predictedPosition
+end
+
+function TrackVelocity(target, targetPart)
+    local targetId = target:GetFullName()
+    
+    if not VelocityData[targetId] then
+        VelocityData[targetId] = {
+            lastPosition = targetPart.Position,
+            lastUpdate = tick(),
+            velocitySamples = {},
+            averageVelocity = Vector3.new(0, 0, 0)
+        }
+        return Vector3.new(0, 0, 0)
+    end
+    
+    local data = VelocityData[targetId]
+    local currentTime = tick()
+    local deltaTime = currentTime - data.lastUpdate
+    if deltaTime > 0.01 then
+        local currentPosition = targetPart.Position
+        local rawVelocity = (currentPosition - data.lastPosition) / deltaTime
+        table.insert(data.velocitySamples, rawVelocity)
+        if #data.velocitySamples > MaxVelocitySamples then
+            table.remove(data.velocitySamples, 1)
+        end
+        local sum = Vector3.new(0, 0, 0)
+        for _, v in ipairs(data.velocitySamples) do
+            sum = sum + v
+        end
+        data.averageVelocity = sum / #data.velocitySamples
+        data.lastPosition = currentPosition
+        data.lastUpdate = currentTime
+    end
+    
+    return VelocityData[targetId].averageVelocity
+end
+
+function CleanupVelocityData()
+    for targetId in pairs(VelocityData) do
+        local target = game:FindFirstChild(targetId, true)
+        if not target then
+            VelocityData[targetId] = nil
+        end
+    end
+end
+
+function chanceaimbot()
+    if not Aimbotconfig.Enabled then 
+        return 
+    end
+    
+    if not HumanoidRootPart or not Humanoid then 
+        return 
+    end
+    
+    Aimbotconfig.PredictionMultiplier = ChanceAimbotPrediction
+    Aimbotconfig.Smoothness = ChanceAimbotSmoothenss
+    
+    if math.random() < 0.01 then 
+        CleanupVelocityData()
+    end
+    
+    local target, targetPart = GetClosestTargetttt()
+    
+    if target and targetPart then
+        local trackedVelocity = Aimbotconfig.VelocityTracking and TrackVelocity(target, targetPart) or targetPart.Velocity
+        local originalVelocity = targetPart.Velocity
+        
+        if Aimbotconfig.VelocityTracking then
+            targetPart.Velocity = trackedVelocity 
+        end
+        
+        local predictedPosition = PredictPosition(targetPart)
+        
+        if Aimbotconfig.VelocityTracking then
+            targetPart.Velocity = originalVelocity
+        end
+        
+        local targetDirection = (predictedPosition - HumanoidRootPart.Position)
+        if Aimbotconfig.HorizontalOnly then
+            targetDirection = Vector3.new(targetDirection.X, 0, targetDirection.Z)
+        end
+        targetDirection = targetDirection.Unit
+        
+        local targetCFrame = CFrame.lookAt(HumanoidRootPart.Position, HumanoidRootPart.Position + targetDirection)
+        local smoothCFrame = HumanoidRootPart.CFrame:Lerp(targetCFrame, Aimbotconfig.Smoothness)
+        
+        Humanoid.AutoRotate = false
+        HumanoidRootPart.CFrame = CFrame.new(HumanoidRootPart.Position, HumanoidRootPart.Position + smoothCFrame.LookVector)
+    else
+        if Humanoid then
+            Humanoid.AutoRotate = true
+        end
+    end
+end
+
+RunService:BindToRenderStep("ChanceAIMBOT", Enum.RenderPriority.Character.Value, chanceaimbot)
+
+local player, character, Humanoid = Players.LocalPlayer, Players.LocalPlayer.Character or Players.LocalPlayer.CharacterAdded:Wait(), (Players.LocalPlayer.Character or Players.LocalPlayer.CharacterAdded:Wait()):WaitForChild("Humanoid")
+
+
+player.CharacterAdded:Connect(function(newCharacter)
+    character = newCharacter
+    Humanoid = character:WaitForChild("Humanoid")
+end)
+
+function Getcooldown(ability)
+    local success, result = pcall(function()
+        local abilityFrame = game:GetService("Players").LocalPlayer.PlayerGui.MainUI.AbilityContainer:FindFirstChild(ability)
+        if not abilityFrame then return 0 end
+        local path = abilityFrame:FindFirstChild("CooldownTime")
+        if not path or path.Text == "" then
+            return 0
+        end
+        local num = tonumber(path.Text) or 0
+        return num
+    end)
+
+    if success then
+        return result > 0
+    else
+        return false
+    end
+end
+
+function GetCharges(ability)
+	local success, result = pcall(function()
+		local abilityContainer = game:GetService("Players").LocalPlayer.PlayerGui.MainUI.AbilityContainer
+		local chargeLabel = abilityContainer:FindFirstChild(ability) and abilityContainer[ability]:FindFirstChild("Charges")
+		if chargeLabel and chargeLabel.Text ~= "" then
+			return tonumber(chargeLabel.Text)
+		end
+		return 0
+	end)
+
+	if success then
+		return result or 0
+	else
+		return 0
+	end
+end
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    local character = game.Players.LocalPlayer.Character
+    if not character then return end
+
+    local altKey2 = GetAltKeybind(3) or "R"
+    local keyCode2 = Enum.KeyCode[altKey2]
+    
+    if keyCode2 and input.KeyCode == keyCode2 and GetCharges("Punch") >= 1 then
+        if character.Parent == workspace.Players.Survivors and character.Name == "Guest1337" and ChanceAimbotEnabled then
+            Aimbotconfig.MinDistance = 0
+            Aimbotconfig.MaxDistance = 9999
+            Chanceaimbotfolder = "Killers"
+            Aimbotconfig.Enabled = true
+            Humanoid.AutoRotate = false
+            task.wait(0.5)
+            Aimbotconfig.Enabled = false
+            Humanoid.AutoRotate = true
+        end
+    end
+end)
