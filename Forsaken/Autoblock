@@ -53,8 +53,8 @@ local killerSounds = {
         gashHeadless = "rbxassetid://86833981571073"
     },
     
-   --[[ ["c00lkidd"] = {
-        slash = "rbxassetid://102228729296384",
+   ["c00lkidd"] = {
+        slash = "rbxassetid://80516583309685",
         walkspeedStart = "rbxassetid://73762171929471",
         walkspeedLoop = "rbxassetid://105200830849301",
         slashMafioso = "rbxassetid://84307400688050",
@@ -62,7 +62,7 @@ local killerSounds = {
         walkspeedLoopMaskedMan = "rbxassetid://75006340803049",
         slashSavior = "rbxassetid://75330693422988",
         walkspeedLoopSavior = "rbxassetid://125427128221522",
-    },]]--
+    },
     
     ["JohnDoe"] = {
         slash1 = "rbxassetid://140242176732868",
@@ -72,7 +72,7 @@ local killerSounds = {
     },
     
     ["1x1x1x1"] = {
-        slash = "rbxassetid://115026634746636",
+        slash = "rbxassetid://117173212095661",
         slashVoidbound = "rbxassetid://95079963655241",
         slashTimeless = "rbxassetid://85853080745515",
         slashLancer = "rbxassetid://109431876587852",
@@ -110,7 +110,7 @@ local killerSoundBoxConfig = {
     },
     ["c00lkidd"] = {
         Size = Vector3.new(4.5, 6, 5),
-        Duration = 0.2,
+        Duration = 0.1,
         Delay = 0,
         Offset = Vector3.new(0, 0, -3)
     },
@@ -128,7 +128,7 @@ local killerSoundBoxConfig = {
     },
     ["Guest666"] = {
         Size = Vector3.new(5, 7, 7.25),
-        Duration = 0.2,
+        Duration = 0.15,
         Delay = 0,
         Offset = Vector3.new(0, -1, -5.3)
     }
@@ -330,7 +330,7 @@ local function createSoundBox(humanoidRootPart, soundId)
     box.Name = "SoundBox"
 if config and config.Size then
 	local s = config.Size
-	box.Size = Vector3.new(s.X * 1, s.Y * 1, s.Z * 1)
+	box.Size = Vector3.new(s.X * 1.15, s.Y * 1, s.Z * 1.1)
 end
     box.Color = DragConfig.Color
     box.Transparency = 0.3
@@ -484,12 +484,37 @@ local function toggleVisibility(visible)
     end
 end
 
+local function setupKillerMonitoring(player)
+    if EXCLUDE_LOCAL_PLAYER and player == LocalPlayer then return end
+    
+    -- Clean up old connections first
+    cleanupKillerSounds(player)
+    
+    -- Monitor current character
+    if player.Character then
+        local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            monitorKillerSounds(player)
+        end
+    end
+    
+    -- Monitor for new characters (respawns)
+    player.CharacterAdded:Connect(function(character)
+        if not isActive then return end
+        local hrp = character:WaitForChild("HumanoidRootPart", 5)
+        if hrp then
+            cleanupKillerSounds(player) -- Clean old before adding new
+            monitorKillerSounds(player)
+        end
+    end)
+end
+
 local function scanExistingKillers()
     for _, killer in pairs(Killers:GetChildren()) do
-        if killer:IsA("Model") and Players:FindFirstChild(killer:GetAttribute("Username")) then
+        if killer:IsA("Model") then
             local player = Players:FindFirstChild(killer:GetAttribute("Username"))
-            if not EXCLUDE_LOCAL_PLAYER or player ~= LocalPlayer then
-                monitorKillerSounds(player)
+            if player then
+                setupKillerMonitoring(player)
             end
         end
     end
@@ -499,11 +524,8 @@ local killerAddedConn = Killers.ChildAdded:Connect(function(character)
     if not character:IsA("Model") then return end
     
     local player = Players:FindFirstChild(character:GetAttribute("Username"))
-    if player and (not EXCLUDE_LOCAL_PLAYER or player ~= LocalPlayer) then
-        local humanoidRootPart = character:WaitForChild("HumanoidRootPart", 5)
-        if humanoidRootPart then
-            monitorKillerSounds(player)
-        end
+    if player then
+        setupKillerMonitoring(player)
     end
 end)
 
@@ -541,7 +563,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         end
 
         if isActive then
-            scanExistingHitboxes()
             scanExistingKillers()
         end
         
