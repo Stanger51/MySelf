@@ -1,0 +1,126 @@
+--  optimized very very trust
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+
+local LocalPlayer = Players.LocalPlayer
+local Connections = {}
+local Drawings = {} -- tab for players
+
+-- skelet
+local function CreateSkeletonLines(character)
+    local drawings = {}
+    
+    -- Head-Torso, Torso-Left Arm, Torso-Right Arm, Torso-Left Leg, Torso-Right Leg(connections)
+    local lines = {
+        {part1 = "Head", part2 = "Torso"},
+        {part1 = "Torso", part2 = "Left Arm"},
+        {part1 = "Torso", part2 = "Right Arm"},
+        {part1 = "Torso", part2 = "Left Leg"},
+        {part1 = "Torso", part2 = "Right Leg"}
+    }
+    
+    for _, lineData in ipairs(lines) do
+        local line = Drawing.new("Line")
+        line.Color = Color3.new(1, 1, 1) -- cum color
+        line.Thickness = 2 -- idk change if uwant more fatty
+        line.Transparency = 1
+        line.Visible = false
+        table.insert(drawings, {line = line, data = lineData})
+    end
+    
+    return drawings
+end
+
+-- update for 1 play
+local function UpdateSkeleton(player)
+    if player == LocalPlayer or not player.Character or not player.Character:FindFirstChild("Humanoid") then
+        return
+    end
+    
+    local character = player.Character
+    local humanoid = character.Humanoid
+    
+    -- if r6
+    if not character:FindFirstChild("Torso") or humanoid.RigType ~= Enum.HumanoidRigType.R6 then
+        return
+    end
+    
+    -- lines
+    if not Drawings[player] then
+        Drawings[player] = CreateSkeletonLines(character)
+    end
+    
+    local drawings = Drawings[player]
+    local onScreen = false -- culling
+    
+    for _, drawData in ipairs(drawings) do
+        local line = drawData.line
+        local part1Name, part2Name = drawData.data.part1, drawData.data.part2
+        local part1 = character:FindFirstChild(part1Name)
+        local part2 = character:FindFirstChild(part2Name)
+        
+        if part1 and part2 then
+            local pos1, onScreen1 = Camera:WorldToViewportPoint(part1.Position)
+            local pos2, onScreen2 = Camera:WorldToViewportPoint(part2.Position)
+            
+            -- Culling too
+            if onScreen1 and onScreen2 then
+                line.From = Vector2.new(pos1.X, pos1.Y)
+                line.To = Vector2.new(pos2.X, pos2.Y)
+                line.Visible = true
+                onScreen = true
+            else
+                line.Visible = false
+            end
+        else
+            line.Visible = false
+        end
+    end
+    
+    -- optimize
+    if not onScreen then
+        for _, drawData in ipairs(drawings) do
+            drawData.line.Visible = false
+        end
+    end
+end
+
+local function OnPlayerRemoving(player)
+    if Drawings[player] then
+        for _, drawData in ipairs(Drawings[player]) do
+            drawData.line:Remove()
+        end
+        Drawings[player] = nil
+    end
+    if Connections[player] then
+        Connections[player]:Disconnect()
+        Connections[player] = nil
+    end
+end
+
+-- all players
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= LocalPlayer then
+        Connections[player] = RunService.Heartbeat:Connect(function()
+            UpdateSkeleton(player)
+        end)
+    end
+end
+
+-- new players
+Players.PlayerAdded:Connect(function(player)
+    if player ~= LocalPlayer then
+        Connections[player] = RunService.Heartbeat:Connect(function()
+            UpdateSkeleton(player)
+        end)
+    end
+end)
+
+Players.PlayerRemoving:Connect(OnPlayerRemoving)
+
+game:BindToClose(function()
+    for _, player in ipairs(Players:GetPlayers()) do
+        OnPlayerRemoving(player)
+    end
+end)
