@@ -1,0 +1,579 @@
+
+local PingReduntMult = 1.05 -- higher = faster reaction time , calculation: delay(Seconds) - Ping(Miliseconds)
+-- cool
+local EXCLUDE_LOCAL_PLAYER = false -- dont toggle 
+local AutoParry = true -- punches after blocking , does not aimbot
+local AimbotPunch = true
+-- sizes of projectiles
+local ProjectileSizes = {
+    ["3.5,3.5,3.5"] = true, -- noli void star
+    ["3,3,3"] = true, -- c00lkidd corrupt nature
+    ["5,11,5"] = true, -- john doe spike
+    ["8,5,6"] = true, -- mass infection
+    ["4.5,1.75,5"] = true, -- entanglement
+    ["3,3,0.5"] = true, -- guest666 cry
+}
+
+local killerSounds = {
+    ["Noli"] = {
+        slash = "rbxassetid://109348678063422",
+        voidStart = "rbxassetid://107347032614322",
+        voidLoop = "rbxassetid://113037804008732",
+        slashASPX = "rbxassetid://108610718831698",
+        voidLoopASPX = "rbxassetid://113037804008732",
+        slashMissingno = "rbxassetid://114742322778642",
+        voidLoopMissingno = "rbxassetid://114710327235372",
+        slashUmbra = "rbxassetid://136323728355613",
+        voidLoopUmbra = "rbxassetid://90905210726859",
+        slashYAAI = "rbxassetid://112395455254818",
+        voidLoopYAAI = "rbxassetid://124580948668075",
+        slashArtful = "rbxassetid://89004992452376",
+        voidLoopArtful = "rbxassetid://140659146085461",
+        slashAdmin = "rbxassetid://131406927389838",
+        voidLoopAdmin = "rbxassetid://71090513459907",
+        slashJX = "rbxassetid://106300477136129", 
+        voidLoopJX = "rbxassetid://105415540898010",
+        voidLoopMeta = "rbxassetid://99282022492246",
+        slashSaggital = "rbxassetid://108610718831698",
+        voidLoopSaggital = "rbxassetid://113037804008732",
+    },
+    
+    ["Slasher"] = {
+        slash = "rbxassetid://112809109188560",
+        gashSwing = "rbxassetid://102228729296384",
+        behead = "rbxassetid://112809109188560",
+        slashPursuer = "rbxassetid://108907358619313",
+        gashSwingPursuer = "rbxassetid://127793641088496",
+        slashKyle = "rbxassetid://12222216",
+        gashSwingKyle = "rbxassetid://102228729296384",
+        gashWhitePumpkin = "rbxassetid://110372418055226",
+        slashHomerunner = "rbxassetid://105840448036441",
+        gashHomerunner = "rbxassetid://86494585504534",
+        slashHeadless = "rbxassetid://116581754553533",
+        gashHeadless = "rbxassetid://86833981571073"
+    },
+    
+   --[[ ["c00lkidd"] = {
+        slash = "rbxassetid://102228729296384",
+        walkspeedStart = "rbxassetid://73762171929471",
+        walkspeedLoop = "rbxassetid://105200830849301",
+        slashMafioso = "rbxassetid://84307400688050",
+        slashMaskedMan = "rbxassetid://82221759983649",
+        walkspeedLoopMaskedMan = "rbxassetid://75006340803049",
+        slashSavior = "rbxassetid://75330693422988",
+        walkspeedLoopSavior = "rbxassetid://125427128221522",
+    },]]--
+    
+    ["JohnDoe"] = {
+        slash1 = "rbxassetid://140242176732868",
+        slash2 = "rbxassetid://86174610237192",
+        slashLivingLegend = "rbxassetid://81702359653578",
+        gasharpoon = "rbxassetid://86174610237192"
+    },
+    
+    ["1x1x1x1"] = {
+        slash = "rbxassetid://115026634746636",
+        slashVoidbound = "rbxassetid://95079963655241",
+        slashTimeless = "rbxassetid://85853080745515",
+        slashLancer = "rbxassetid://109431876587852",
+        slashHacklord = "rbxassetid://119942598489800",
+        slashAceOfSpades = "rbxassetid://115026634746636",
+        slashEverfrost = "rbxassetid://119089145505438",
+
+    },
+    
+    ["Guest666"] = {
+        slash1 = "rbxassetid://119583605486352",
+        slash2 = "rbxassetid://79980897195554",
+
+        slash1Omega = "rbxassetid://117231507259853",
+        slash2Omega = "rbxassetid://101698569375359",
+        slash3Omega = "rbxassetid://101553872555606",
+
+        slash1Symbol = "rbxassetid://71805956520207",
+        slash2Symbol = "rbxassetid://125213046326879"
+    }
+}
+
+local killerSoundBoxConfig = {
+    ["Noli"] = {
+        Size = Vector3.new(4.5, 6, 7.5),
+        Duration = 0.2,
+        Delay = 0.275,
+        Offset = Vector3.new(0, 0, -3)
+    },
+    ["Slasher"] = {
+        Size = Vector3.new(4.5, 6, 7.5),
+        Duration = 0.2,
+        Delay = 0.085,
+        Offset = Vector3.new(0, 0, -3)
+    },
+    ["c00lkidd"] = {
+        Size = Vector3.new(4.5, 6, 5),
+        Duration = 0.2,
+        Delay = 0,
+        Offset = Vector3.new(0, 0, -3)
+    },
+    ["JohnDoe"] = {
+        Size = Vector3.new(4.5, 6, 7.5),
+        Duration = 0.2,
+        Delay = 0.25,
+        Offset = Vector3.new(0, 0, -2.5)
+    },
+    ["1x1x1x1"] = {
+        Size = Vector3.new(4.5, 6, 7.5),
+        Duration = 0.2,
+        Delay = 0.175,
+        Offset = Vector3.new(0, 0, -2.5)
+    },
+    ["Guest666"] = {
+        Size = Vector3.new(5, 7, 7.25),
+        Duration = 0.2,
+        Delay = 0,
+        Offset = Vector3.new(0, -1, -5.3)
+    }
+}
+
+local soundSpecificConfig = {
+    --[[["rbxassetid://127793641088496"] = { -- behead bugged
+        Size = Vector3.new(8, 4, 8),
+        Duration = 0.7,
+        Delay = 0.1,
+        Offset = Vector3.new(0, 0, -3.25)
+    },
+    ["rbxassetid://102228729296384"] = { -- gashing bugged (idk sometimes work?!??!?!)
+        Size = Vector3.new(8, 4, 8),
+        Duration = 0.7,
+        Delay = 0.1,
+        Offset =Vector3.new(0, 0, -3.25)
+    },]]--
+    ["rbxassetid://86174610237192"] = {
+        Size = Vector3.new(4.5, 6, -7.5),
+        Duration = 0.4,
+        Delay = 0.4,
+        Offset = Vector3.new(0, 0, -2.5)
+    }
+}
+
+local DragConfig = {
+    Transparency = 0.8,
+    Color = Color3.fromRGB(255, 67, 255),
+    Offset = 1,  -- offset
+    SizeX = 1, -- size yeah
+    SizeY = 0.9,
+    SizeZ = 1,
+    SpeedMultiplier = 6, -- every 5 studs/s adds 0.5 offset
+    DebounceTime = 0.05
+}
+
+-- kinda useless
+local SoundBoxConfig = {
+    Color = Color3.fromRGB(255,67,255),
+    Transparency = 0.6
+}
+
+-- script function --
+
+function Getcooldown(ability)
+    local success, result = pcall(function()
+        local abilityFrame = game:GetService("Players").LocalPlayer.PlayerGui.MainUI.AbilityContainer:FindFirstChild(ability)
+        if not abilityFrame then return 0 end
+        local path = abilityFrame:FindFirstChild("CooldownTime")
+        if not path or path.Text == "" then
+            return 0
+        end
+        local num = tonumber(path.Text) or 0
+        return num
+    end)
+
+    if success then
+        return result > 0
+    else
+        return false
+    end
+end
+
+local LocalPlayer = game.Players.LocalPlayer
+local Hitboxes = workspace:WaitForChild("Hitboxes")
+local Killers = workspace.Players:WaitForChild("Killers")
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local StarterGui = game:GetService("StarterGui")
+
+local Ping = 60
+local PingTrackActive = true
+local Stats = game:GetService("Stats")
+local network = Stats:FindFirstChild("Network")
+local serverStats = network and network:FindFirstChild("ServerStatsItem")
+local dataPing = serverStats and serverStats:FindFirstChild("Data Ping")
+if not dataPing then
+    warn("????????????? no ping?!?!?!?!?!?!?!!??!?")
+    return
+end
+local SAMPLE_INTERVAL = 0.03  
+local WINDOW = 2             
+local SAMPLES = math.floor(WINDOW / SAMPLE_INTERVAL + 0.5)
+task.spawn(function()
+while PingTrackActive do
+    local sum = 0
+    local count = 0
+
+    for i = 1, SAMPLES do
+        local ok, value = pcall(function() return dataPing:GetValue() end)
+        if ok and type(value) == "number" then
+            sum = sum + value
+            count = count + 1
+        end
+
+        task.wait(SAMPLE_INTERVAL)
+    end
+    if count > 0 then
+        local avg = sum / count
+        Ping = avg
+    end
+end
+end)
+
+local isActive = true
+local connection
+local hitboxData = {}
+local soundBoxData = {}
+local killerSoundConnections = {}
+
+local remoteEvent = ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Network"):WaitForChild("RemoteEvent")
+
+local attackSoundIds = {}
+for killerName, sounds in pairs(killerSounds) do
+    for soundName, soundId in pairs(sounds) do
+        local lowerName = soundName:lower()
+        if lowerName:match("slash") or lowerName:match("swing") or lowerName:match("behead") or 
+           lowerName:match("gash") or lowerName:match("punch") or lowerName:match("harpoon") then
+            attackSoundIds[soundId] = killerName
+        end
+    end
+end
+
+local function cleanupHitbox(child)
+    local data = hitboxData[child]
+    if not data then return end
+    
+    if data.updateConnection then
+        data.updateConnection:Disconnect()
+    end
+    if data.touchConnection then
+        data.touchConnection:Disconnect()
+    end
+    if data.box and data.box.Parent then
+        data.box:Destroy()
+    end
+    
+    hitboxData[child] = nil
+end
+
+local function cleanupSoundBox(box)
+    local data = soundBoxData[box]
+    if not data then return end
+    
+    if data.updateConnection then
+        data.updateConnection:Disconnect()
+    end
+    if data.touchConnection then
+        data.touchConnection:Disconnect()
+    end
+    if box and box.Parent then
+        box:Destroy()
+    end
+    
+    soundBoxData[box] = nil
+end
+
+local function getSoundBoxConfig(soundId, killerType)
+    if soundSpecificConfig[soundId] then
+        return soundSpecificConfig[soundId]
+    end
+    
+    if killerSoundBoxConfig[killerType] then
+        return killerSoundBoxConfig[killerType]
+    end
+    
+    return {
+        Size = Vector3.new(4.5, 6, 7.5),
+        Duration = 0.5,
+        Delay = 0,
+        Offset = Vector3.new(0, 0, 0)
+    }
+end
+
+local function createSoundBox(humanoidRootPart, soundId)
+    if not isActive or not humanoidRootPart or not humanoidRootPart.Parent then return end
+    
+    local character = humanoidRootPart.Parent
+    local player = Players:FindFirstChild(character:GetAttribute("Username"))
+    
+    if EXCLUDE_LOCAL_PLAYER and player == LocalPlayer then return end
+    
+    local killerType = attackSoundIds[soundId]
+    if not killerType then return end
+    
+    local config = getSoundBoxConfig(soundId, killerType)
+    local MsPing = Ping / 1000
+    local PingRedunt = MsPing * PingReduntMult
+    local delay = config.Delay - PingRedunt
+    print(PingRedunt)
+    task.wait(delay)
+    
+    if not humanoidRootPart.Parent or not isActive then return end
+    
+    local box = Instance.new("Part")
+    box.Name = "SoundBox"
+if config and config.Size then
+	local s = config.Size
+	box.Size = Vector3.new(s.X * 1, s.Y * 1, s.Z * 1)
+end
+    box.Color = DragConfig.Color
+    box.Transparency = 0.3
+    box.Anchored = true
+    box.CanCollide = false
+    box.Material = Enum.Material.ForceField
+    box.Parent = workspace
+    
+    for _, surface in pairs(Enum.NormalId:GetEnumItems()) do
+        box[surface.Name .. "Surface"] = Enum.SurfaceType.Smooth
+    end
+    
+    print("Sound box created! Size:", config.Size, "Duration:", config.Duration,"Offset:", config.Offset)
+    
+    local data = {
+        box = box,
+        lastFireTime = 0,
+        updateConnection = nil,
+        touchConnection = nil,
+        startTime = tick(),
+        duration = config.Duration
+    }
+    
+    soundBoxData[box] = data
+    
+    data.updateConnection = RunService.Heartbeat:Connect(function()
+        if not box.Parent or not humanoidRootPart.Parent or not isActive then
+            cleanupSoundBox(box)
+            return
+        end
+        
+        if tick() - data.startTime >= data.duration then
+            cleanupSoundBox(box)
+            return
+        end
+        
+local velocity = humanoidRootPart.AssemblyLinearVelocity
+local speedOffset = (velocity.Magnitude / DragConfig.SpeedMultiplier) * -0.1
+local totalOffset = DragConfig.Offset + speedOffset
+local configOffset = config.Offset or Vector3.new(0, 0, 0)
+box.CFrame = humanoidRootPart.CFrame 
+	* CFrame.new(0, 0, totalOffset)   
+	* CFrame.new(configOffset)        
+
+
+    end)
+    
+    local localChar = LocalPlayer.Character
+    if not localChar then 
+        cleanupSoundBox(box)
+        return 
+    end
+    
+    local overlapParams = OverlapParams.new()
+    overlapParams.FilterType = Enum.RaycastFilterType.Whitelist
+    overlapParams.FilterDescendantsInstances = {localChar}
+    
+    data.touchConnection = RunService.Heartbeat:Connect(function()
+        if not box.Parent or not isActive then
+            cleanupSoundBox(box)
+            return
+        end
+        
+        if tick() - data.startTime >= data.duration then
+            cleanupSoundBox(box)
+            return
+        end
+        
+        if not localChar.Parent then return end
+        
+        local partsInBox = workspace:GetPartBoundsInBox(box.CFrame, box.Size, overlapParams)
+        
+        if #partsInBox > 0 then
+            local currentTime = tick()
+            if currentTime - data.lastFireTime >= DragConfig.DebounceTime then
+                data.lastFireTime = currentTime
+                if not Getcooldown("Block") then
+                remoteEvent:FireServer("UseActorAbility", {[1] = "Block"})
+                end
+            end
+        end
+    end)
+end
+
+local function monitorKillerSounds(killer)
+    if killerSoundConnections[killer] then return end
+    
+    local character = killer.Character
+    if not character then return end
+    
+    if EXCLUDE_LOCAL_PLAYER and killer == LocalPlayer then return end
+    
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return end
+    
+    local connections = {}
+    
+    local function isAttackSound(sound)
+        if not sound:IsA("Sound") then return false, nil end
+        local soundId = sound.SoundId
+        
+        if attackSoundIds[soundId] then
+            return true, soundId
+        end
+        
+        return false, nil
+    end
+    
+    local function connectToSound(sound)
+        local isAttack, soundId = isAttackSound(sound)
+        if not isAttack then return end
+        
+        print("Attack sound detected:", soundId, "Killer:", attackSoundIds[soundId])
+        createSoundBox(humanoidRootPart, soundId)
+    end
+    
+    for _, child in pairs(humanoidRootPart:GetChildren()) do
+        connectToSound(child)
+    end
+    
+    local childConn = humanoidRootPart.ChildAdded:Connect(function(child)
+        connectToSound(child)
+    end)
+    table.insert(connections, childConn)
+    
+    killerSoundConnections[killer] = connections
+end
+
+local function cleanupKillerSounds(killer)
+    local connections = killerSoundConnections[killer]
+    if not connections then return end
+    
+    for _, conn in ipairs(connections) do
+        conn:Disconnect()
+    end
+    
+    killerSoundConnections[killer] = nil
+end
+
+local function toggleVisibility(visible)
+    local transparency = visible and DragConfig.Transparency or 1
+    for _, data in pairs(hitboxData) do
+        if data.box and data.box.Parent then
+            data.box.Transparency = transparency
+        end
+    end
+    for _, data in pairs(soundBoxData) do
+        if data.box and data.box.Parent then
+            data.box.Transparency = visible and SoundBoxConfig.Transparency or 1
+        end
+    end
+end
+
+local function scanExistingKillers()
+    for _, killer in pairs(Killers:GetChildren()) do
+        if killer:IsA("Model") and Players:FindFirstChild(killer:GetAttribute("Username")) then
+            local player = Players:FindFirstChild(killer:GetAttribute("Username"))
+            if not EXCLUDE_LOCAL_PLAYER or player ~= LocalPlayer then
+                monitorKillerSounds(player)
+            end
+        end
+    end
+end
+
+local killerAddedConn = Killers.ChildAdded:Connect(function(character)
+    if not character:IsA("Model") then return end
+    
+    local player = Players:FindFirstChild(character:GetAttribute("Username"))
+    if player and (not EXCLUDE_LOCAL_PLAYER or player ~= LocalPlayer) then
+        local humanoidRootPart = character:WaitForChild("HumanoidRootPart", 5)
+        if humanoidRootPart then
+            monitorKillerSounds(player)
+        end
+    end
+end)
+
+local killerRemovedConn = Killers.ChildRemoved:Connect(function(character)
+    if not character:IsA("Model") then return end
+    
+    local player = Players:FindFirstChild(character:GetAttribute("Username"))
+    if player then
+        cleanupKillerSounds(player)
+    end
+end)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.KeyCode == Enum.KeyCode.Y then
+        isActive = not isActive
+        
+        toggleVisibility(isActive)
+        
+        if not isActive then
+            for box in pairs(soundBoxData) do
+                cleanupSoundBox(box)
+            end
+        end
+        
+        local status = isActive and "ON" or "OFF"
+
+        if PingTrackActive == true then
+        StarterGui:SetCore("SendNotification", {
+            Title = "Hitbox Expander",
+            Text = "Toggled: " .. status,
+            Duration = 2
+        })
+        end
+
+        if isActive then
+            scanExistingHitboxes()
+            scanExistingKillers()
+        end
+        
+    elseif input.KeyCode == Enum.KeyCode.F8 then
+        PingTrackActive = false
+        if connection then
+            connection:Disconnect()
+        end
+        if killerAddedConn then
+            killerAddedConn:Disconnect()
+        end
+        if killerRemovedConn then
+            killerRemovedConn:Disconnect()
+        end
+        
+        for child in pairs(hitboxData) do
+            cleanupHitbox(child)
+        end
+        
+        for killer in pairs(killerSoundConnections) do
+            cleanupKillerSounds(killer)
+        end
+        
+        for box in pairs(soundBoxData) do
+            cleanupSoundBox(box)
+        end
+        
+        print("Hitbox Expander: Destroyed")
+        script:Destroy()
+    end
+end)
+
+scanExistingKillers()
+
+print("Y to toggle , F8 to destroy.")
