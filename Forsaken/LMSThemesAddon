@@ -1,0 +1,23 @@
+local LMSThemes = {
+    Emotional = "rbxassetid://134174166564242",
+    Default = "rbxassetid://116564900353263",
+    NewEmotional = "rbxassetid://80564889711353",
+    NewDefault = "rbxassetid://71057332615441"
+}
+local ThemesFolder = game.Workspace.Themes
+local localplayer = game.Players.LocalPlayer
+
+ThemesFolder.ChildAdded:Connect(function(child)
+    if string.lower(child.Name) == "lastsurvivor" and child:IsA("Sound") then
+        if child.SoundId == LMSThemes.NewDefault then
+            child.SoundId = LMSThemes.Default
+            child.Volume = 2.5
+        end
+
+        -- son...
+        if child.SoundId == LMSThemes.NewEmotional then
+            child.SoundId = LMSThemes.Emotional
+            child.Volume = 2.5
+        end
+    end
+end)
