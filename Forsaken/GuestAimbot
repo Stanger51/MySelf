@@ -15,7 +15,7 @@ local LocalPlayer = game.Players.LocalPlayer
 local RunService = game:GetService("RunService")
 local Players = game.Players
 local UserInputService = game:GetService("UserInputService")
-local ChanceAimbotEnabled, ChanceAimbotPrediction, ChanceAimbotSmoothenss, Character, HumanoidRootPart, Humanoid, VelocityData, MaxVelocitySamples, Aimbotconfig = true, 1, 0.3, LocalPlayer.Character, LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart"), LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid"), {}, 10, {Enabled=false, Smoothness=0.3, PredictionMultiplier=1, MinDistance=0, MaxDistance=9999, TargetParts={"QueryHitbox", "HumanoidRootPart", "Torso", "UpperTorso"}, TeamCheck=false, HorizontalOnly=true, VelocityTracking=true}
+local ChanceAimbotEnabled, ChanceAimbotPrediction, ChanceAimbotSmoothenss, Character, HumanoidRootPart, Humanoid, VelocityData, MaxVelocitySamples, Aimbotconfig = true, 1,6, 0.1, LocalPlayer.Character, LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart"), LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid"), {}, 10, {Enabled=false, Smoothness=0.3, PredictionMultiplier=1, MinDistance=0, MaxDistance=9999, TargetParts={"QueryHitbox", "HumanoidRootPart", "Torso", "UpperTorso"}, TeamCheck=false, HorizontalOnly=true, VelocityTracking=true}
 
 LocalPlayer.CharacterAdded:Connect(function(NewCharacter)
     Character = NewCharacter
