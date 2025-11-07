@@ -65,7 +65,7 @@ ThemesFolder.ChildAdded:Connect(function(child)
     if string.lower(child.Name) == "lastsurvivor" and child:IsA("Sound") then
         if child.SoundId == LMSThemes.NewDefault then
             child.SoundId = LMSThemes.Default
-            child.Volume = 2.5
+            child.Volume = 5
         end
 
         -- son...
