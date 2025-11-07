@@ -60,12 +60,12 @@ local localplayer = game.Players.LocalPlayer
 ThemesFolder.ChildAdded:Connect(function(child)
     if string.lower(child.Name) == "30seconds" and child:IsA("Sound") then
         child.SoundId = getcustomasset("OCoolkid/PleaseSpeed.mp3")
-        child.Volume = 2.5
+        child.Volume = 6
     end
     if string.lower(child.Name) == "lastsurvivor" and child:IsA("Sound") then
         if child.SoundId == LMSThemes.NewDefault then
             child.SoundId = LMSThemes.Default
-            child.Volume = 5
+            child.Volume = 2.5
         end
 
         -- son...
