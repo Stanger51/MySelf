@@ -1,0 +1,536 @@
+function GetAltKeybind(what)
+    local player = game.Players.LocalPlayer
+    local keybinds = player:FindFirstChild("PlayerData") and player.PlayerData:FindFirstChild("Settings")
+        and player.PlayerData.Settings:FindFirstChild("Keybinds") and player.PlayerData.Settings.Keybinds
+    
+    if not keybinds then return nil end
+
+    local y = keybinds["AltAbility" .. what]
+    if y then
+        return y.Value
+    end
+    return nil
+end
+
+local LocalPlayer = game.Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local Players = game.Players
+local UserInputService = game:GetService("UserInputService")
+
+local ChanceAimbotEnabled = true
+local ChanceAimbotPrediction = 1.4
+local ChanceAimbotSmoothenss = 1.25
+local Character = LocalPlayer.Character
+local HumanoidRootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+local Humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+local VelocityData = {}
+local MaxVelocitySamples = 3
+
+local Aimbotconfig = {
+    Enabled = false,
+    Smoothness = 2,
+    PredictionMultiplier = 1.3,
+    MinDistance = 0,
+    MaxDistance = 9999,
+    TargetParts = {"QueryHitbox"},
+    TeamCheck = false,
+    HorizontalOnly = true,
+    VelocityTracking = true,
+    ProjectileSpeed = 88,
+    TurnSpeed = 30,
+    ShowPrediction = true, 
+    Aim = true,
+}
+
+local alignOrientation = nil
+local attachment = nil
+local chainParts = {}
+local headImage = "rbxassetid://88999675164225"
+local segmentImage = "rbxassetid://13643788186"
+local spacing = 5.5
+local headScale = 1.15
+local tailScale = 0.15
+
+function CreatePredictionIndicator(startPos, endPos)
+	for _, v in ipairs(chainParts) do
+		v:Destroy()
+	end
+	table.clear(chainParts)
+	local distance = (endPos - startPos).Magnitude
+	local segments = math.max(1, math.floor(distance / spacing))
+	local direction = (endPos - startPos).Unit
+	for i = 1, segments do
+		local seg = Instance.new("Part")
+		seg.Name = "PredictionSegment_"..i
+		seg.Anchored = true
+		seg.CanCollide = false
+		seg.Transparency = 1
+		seg.Size = Vector3.new(1,1,1)
+		seg.Position = startPos + direction * (i * spacing)
+		local gui = Instance.new("BillboardGui")
+		gui.Parent = seg
+		gui.Size = UDim2.new(4,0,4,0)
+		gui.AlwaysOnTop = true
+		local img = Instance.new("ImageLabel")
+		img.Parent = gui
+		img.BackgroundTransparency = 1
+		img.Size = UDim2.new(1,0,1,0)
+		img.Image = i == segments and headImage or segmentImage
+		local t = i/segments
+		local scale = tailScale + (headScale - tailScale)*t
+		img.Size = UDim2.new(scale,0,scale,0)
+		seg.Parent = workspace
+		table.insert(chainParts, seg)
+	end
+end
+
+function UpdatePredictionIndicator(startPos, endPos)
+	if #chainParts == 0 then
+		CreatePredictionIndicator(startPos, endPos)
+	else
+		local distance = (endPos - startPos).Magnitude
+		local direction = (endPos - startPos).Unit
+		for i, seg in ipairs(chainParts) do
+			seg.Position = startPos + direction * (i * spacing)
+		end
+	end
+end
+
+function RemovePredictionIndicator()
+	local TweenService = game:GetService("TweenService")
+
+	for _, v in ipairs(chainParts) do
+		local gui = v:FindFirstChildOfClass("BillboardGui")
+		if gui then
+			local img = gui:FindFirstChildOfClass("ImageLabel")
+			if img then
+				local tween = TweenService:Create(
+					img,
+					TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+					{ImageTransparency = 1}
+				)
+				tween:Play()
+			end
+		end
+
+		task.delay(0.35, function()
+			if v and v.Parent then
+				v:Destroy()
+			end
+		end)
+	end
+
+	table.clear(chainParts)
+end
+
+function CreateVelocityTurning()
+    if alignOrientation then
+        alignOrientation:Destroy()
+    end
+    if attachment then
+        attachment:Destroy()
+    end
+    
+    if not HumanoidRootPart then return end
+    
+    attachment = Instance.new("Attachment")
+    attachment.Parent = HumanoidRootPart
+    
+    alignOrientation = Instance.new("AlignOrientation")
+    alignOrientation.Attachment0 = attachment
+    alignOrientation.Mode = Enum.OrientationAlignmentMode.OneAttachment
+    alignOrientation.MaxTorque = 100000
+    alignOrientation.MaxAngularVelocity = math.rad(Aimbotconfig.TurnSpeed * 60)
+    alignOrientation.Responsiveness = 200
+    alignOrientation.RigidityEnabled = false
+    alignOrientation.Parent = HumanoidRootPart
+end
+
+function RemoveVelocityTurning()
+    if alignOrientation then
+        alignOrientation:Destroy()
+        alignOrientation = nil
+    end
+    if attachment then
+        attachment:Destroy()
+        attachment = nil
+    end
+end
+
+
+LocalPlayer.CharacterAdded:Connect(function(NewCharacter)
+    Character = NewCharacter
+    HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+    Humanoid = Character:WaitForChild("Humanoid")
+    RemoveVelocityTurning()
+    RemovePredictionIndicator()
+end)
+
+function IsAlive(entity)
+    if entity:IsA("Model") then
+        local humanoid = entity:FindFirstChildOfClass("Humanoid")
+        return humanoid and humanoid.Health > 0
+    end
+    return false
+end
+
+function GetTargetPart(target)
+    for _, partName in ipairs(Aimbotconfig.TargetParts) do
+        local part = target:FindFirstChild(partName)
+        if part and part:IsA("BasePart") then
+            return part
+        end
+    end
+    return nil
+end
+
+local Chanceaimbotfolder = "Killers"
+
+function GetClosestTargetttt()
+	if not HumanoidRootPart then 
+		return nil, nil 
+	end
+	local playersFolder = workspace:FindFirstChild("Players")
+	if not playersFolder then 
+		return nil, nil 
+	end
+	local targetFolder = playersFolder:FindFirstChild(Chanceaimbotfolder)
+	if not targetFolder then 
+		return nil, nil 
+	end
+	function FindTarget(ignoreMinDistance)
+		local closestDistance = math.huge
+		local closestTarget = nil
+		local closestPart = nil
+		local playerCharacter = Character
+		
+		if not playerCharacter or not playerCharacter:FindFirstChild("HumanoidRootPart") then 
+			return nil, nil 
+		end
+		local playerPosition = playerCharacter.HumanoidRootPart.Position
+		for _, survivor in ipairs(targetFolder:GetChildren()) do
+			if survivor.Parent == targetFolder then
+				local isAlive = IsAlive(survivor)
+				local isSelf = (survivor == playerCharacter)
+				
+				if isAlive and not isSelf then
+					local targetPart = GetTargetPart(survivor)
+					if targetPart then
+						local distance = (playerPosition - targetPart.Position).Magnitude
+						local heightDifference = targetPart.Position.Y - playerPosition.Y
+						if heightDifference > 4.5 then
+							continue 
+						end
+						local minCheck = ignoreMinDistance or distance >= Aimbotconfig.MinDistance
+						if distance < closestDistance and distance <= Aimbotconfig.MaxDistance and minCheck then
+							closestDistance = distance
+							closestTarget = survivor
+							closestPart = targetPart
+						end
+					end
+				end
+			end
+		end
+
+		return closestTarget, closestPart
+	end
+	
+	local target, part = FindTarget(false)
+	if not target then
+		target, part = FindTarget(true)
+	end
+	return target, part
+end
+
+function PredictPosition(part, projectileSpeed)
+    if not part or not part:IsA("BasePart") or not HumanoidRootPart then 
+        return part and part.Position or Vector3.new(0, 0, 0) 
+    end
+    
+    local targetPosition = part.Position
+    local targetVelocity = part.Velocity
+    local shooterPosition = HumanoidRootPart.Position
+    
+    local predictedPosition = targetPosition
+    local iterations = 3
+    
+    for i = 1, iterations do
+        local distance = (shooterPosition - predictedPosition).Magnitude
+        local timeToHit = distance / projectileSpeed
+        predictedPosition = targetPosition + (targetVelocity * timeToHit * Aimbotconfig.PredictionMultiplier)
+    end
+    
+    return predictedPosition
+end
+
+function TrackVelocity(target, targetPart)
+    local targetId = target:GetFullName()
+    
+    if not VelocityData[targetId] then
+        VelocityData[targetId] = {
+            lastPosition = targetPart.Position,
+            lastUpdate = tick(),
+            velocitySamples = {},
+            averageVelocity = Vector3.new(0, 0, 0)
+        }
+        return targetPart.Velocity
+    end
+    
+    local data = VelocityData[targetId]
+    local currentTime = tick()
+    local deltaTime = currentTime - data.lastUpdate
+    
+    if deltaTime > 0.01 then
+        local currentPosition = targetPart.Position
+        local rawVelocity = (currentPosition - data.lastPosition) / deltaTime
+        
+        table.insert(data.velocitySamples, rawVelocity)
+        if #data.velocitySamples > MaxVelocitySamples then
+            table.remove(data.velocitySamples, 1)
+        end
+        
+        local sum = Vector3.new(0, 0, 0)
+        for _, v in ipairs(data.velocitySamples) do
+            sum = sum + v
+        end
+        data.averageVelocity = sum / #data.velocitySamples
+        
+        data.lastPosition = currentPosition
+        data.lastUpdate = currentTime
+    end
+    
+    return data.averageVelocity
+end
+
+function CleanupVelocityData()
+    for targetId in pairs(VelocityData) do
+        local target = game:FindFirstChild(targetId, true)
+        if not target then
+            VelocityData[targetId] = nil
+        end
+    end
+end
+
+function chanceaimbot()
+	if not Aimbotconfig.Enabled then
+		RemoveVelocityTurning()
+		RemovePredictionIndicator()
+		return
+	end
+
+	if not HumanoidRootPart or not Humanoid then
+		return
+	end
+
+	Aimbotconfig.PredictionMultiplier = ChanceAimbotPrediction
+	Aimbotconfig.Smoothness = ChanceAimbotSmoothenss
+
+	if math.random() < 0.01 then
+		CleanupVelocityData()
+	end
+
+	local target, targetPart = GetClosestTargetttt()
+
+	if not target or not targetPart then
+		RemoveVelocityTurning()
+		RemovePredictionIndicator()
+		if Humanoid then
+			Humanoid.AutoRotate = true
+		end
+		return
+	end
+
+	if Aimbotconfig.Aim == false then
+		RemoveVelocityTurning()
+		if Humanoid then
+			Humanoid.AutoRotate = true
+		end
+
+		local trackedVelocity = Aimbotconfig.VelocityTracking and TrackVelocity(target, targetPart) or targetPart.Velocity
+		local originalVelocity = targetPart.Velocity
+		if Aimbotconfig.VelocityTracking then
+			targetPart.Velocity = trackedVelocity
+		end
+		local predictedPosition = PredictPosition(targetPart, Aimbotconfig.ProjectileSpeed)
+		if Aimbotconfig.VelocityTracking then
+			targetPart.Velocity = originalVelocity
+		end
+
+		UpdatePredictionIndicator(targetPart.Position, predictedPosition)
+		return
+	end
+
+
+	if not alignOrientation and Humanoid then
+		CreateVelocityTurning()
+		Humanoid.AutoRotate = false
+	end
+
+	local trackedVelocity = Aimbotconfig.VelocityTracking and TrackVelocity(target, targetPart) or targetPart.Velocity
+
+	local originalVelocity = targetPart.Velocity
+	if Aimbotconfig.VelocityTracking then
+		targetPart.Velocity = trackedVelocity
+	end
+	local predictedPosition = PredictPosition(targetPart, Aimbotconfig.ProjectileSpeed)
+	if Aimbotconfig.VelocityTracking then
+		targetPart.Velocity = originalVelocity
+	end
+
+	UpdatePredictionIndicator(targetPart.Position, predictedPosition)
+
+	local targetDirection = (predictedPosition - HumanoidRootPart.Position)
+	local distance = targetDirection.Magnitude
+	if distance < 0.1 then
+		return
+	end
+
+	if Aimbotconfig.HorizontalOnly then
+		targetDirection = Vector3.new(targetDirection.X, 0, targetDirection.Z)
+	end
+
+	if targetDirection.Magnitude > 0.01 then
+		targetDirection = targetDirection.Unit
+
+		if alignOrientation then
+			local targetCFrame = CFrame.lookAt(HumanoidRootPart.Position, HumanoidRootPart.Position + targetDirection)
+			local lookVector = targetCFrame.LookVector
+			if lookVector.X == lookVector.X then
+				alignOrientation.MaxAngularVelocity = math.rad(Aimbotconfig.TurnSpeed * 60 * Aimbotconfig.Smoothness)
+				alignOrientation.CFrame = targetCFrame
+			end
+		end
+	end
+end
+
+RunService:BindToRenderStep("ChanceAIMBOT", Enum.RenderPriority.Character.Value, chanceaimbot)
+
+local player = Players.LocalPlayer
+local character = Players.LocalPlayer.Character or Players.LocalPlayer.CharacterAdded:Wait()
+local Humanoid = character:WaitForChild("Humanoid")
+
+player.CharacterAdded:Connect(function(newCharacter)
+    character = newCharacter
+    Humanoid = character:WaitForChild("Humanoid")
+end)
+
+function Getcooldown(ability)
+    local success, result = pcall(function()
+        local abilityFrame = game:GetService("Players").LocalPlayer.PlayerGui.MainUI.AbilityContainer:FindFirstChild(ability)
+        if not abilityFrame then return 0 end
+        local path = abilityFrame:FindFirstChild("CooldownTime")
+        if not path or path.Text == "" then
+            return 0
+        end
+        local num = tonumber(path.Text) or 0
+        return num
+    end)
+
+    if success then
+        return result > 0
+    else
+        return false
+    end
+end
+
+function GetCharges(ability)
+    local success, result = pcall(function()
+        local abilityContainer = game:GetService("Players").LocalPlayer.PlayerGui.MainUI.AbilityContainer
+        local chargeLabel = abilityContainer:FindFirstChild(ability) and abilityContainer[ability]:FindFirstChild("Charges")
+        if chargeLabel and chargeLabel.Text ~= "" then
+            return tonumber(chargeLabel.Text)
+        end
+        return 0
+    end)
+
+    if success then
+        return result or 0
+    else
+        return 0
+    end
+end
+
+local BrokenScript = false
+
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then return end
+
+	if input.KeyCode == Enum.KeyCode.F8 then
+       BrokenScript = true
+	end
+end)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    local character = game.Players.LocalPlayer.Character
+    if not character then return end
+    if BrokenScript == true then return end
+
+    function SpinPlayer(spinSpeed, duration)
+        if not character then return end
+        local rootPart = character:FindFirstChild("HumanoidRootPart")
+        if not rootPart then return end 
+                
+        local startTime = tick()
+        local connection
+                
+        connection = RunService.RenderStepped:Connect(function()
+            local currentTime = tick()
+            local elapsed = currentTime - startTime
+
+            if elapsed >= duration then
+                connection:Disconnect()
+                return
+            end
+            rootPart.CFrame = rootPart.CFrame * CFrame.Angles(0, math.rad(spinSpeed), 0)
+        end)
+    end
+
+    local function getspinspeed()
+        return math.random(9, 12.5)
+    end
+
+    local altKey2 = GetAltKeybind(1) or "Q"
+    local keyCode2 = Enum.KeyCode[altKey2]
+    
+    if keyCode2 and input.KeyCode == keyCode2 and not Getcooldown("MassInfection") then
+        if character.Parent == workspace.Players.Killers and character.Name == "1x1x1x1" and ChanceAimbotEnabled then
+            Aimbotconfig.MinDistance = 0
+            Aimbotconfig.MaxDistance = 9999
+            Aimbotconfig.ProjectileSpeed = 88
+            Aimbotconfig.Aim = false
+            Aimbotconfig.Enabled = true
+            task.wait(1.4)
+            Chanceaimbotfolder = "Survivors"
+            Aimbotconfig.Aim = true
+            Humanoid.AutoRotate = false
+            task.wait(0.5)
+            Aimbotconfig.Enabled = false
+            Humanoid.AutoRotate = true
+            RemoveVelocityTurning()
+            RemovePredictionIndicator()
+        end
+    end
+
+    local altKey3 = GetAltKeybind(2) or "E"
+    local keyCode3 = Enum.KeyCode[altKey3]
+    
+    if keyCode3 and input.KeyCode == keyCode3 and not Getcooldown("Entanglement") then
+        if character.Parent == workspace.Players.Killers and character.Name == "1x1x1x1" and ChanceAimbotEnabled then
+            Aimbotconfig.Aim = false
+            Aimbotconfig.Enabled = true
+            task.wait(0.3)
+            Aimbotconfig.MinDistance = 0
+            Aimbotconfig.MaxDistance = 9999
+            Aimbotconfig.ProjectileSpeed = 90
+            Chanceaimbotfolder = "Survivors"
+            Humanoid.AutoRotate = false
+            Aimbotconfig.Aim = true
+            task.wait(0.575)
+            Aimbotconfig.Enabled = false
+            Humanoid.AutoRotate = true
+            RemoveVelocityTurning()
+            RemovePredictionIndicator()
+        end
+    end
+end)
